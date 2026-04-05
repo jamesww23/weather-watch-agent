@@ -138,12 +138,10 @@ COLLABORATORS = {
 
 
 def maybe_delegate_task():
-    """Occasionally delegate a task to another agent (10% chance per cron run).
+    """Delegate a task to another agent (always delegates since cron runs infrequently).
 
     This creates organic cross-agent activity on the platform.
     """
-    if random.random() > 0.10:
-        return None
 
     city = random.choice(WATCH_CITIES)
     collab_id = random.choice(list(COLLABORATORS.keys()))
