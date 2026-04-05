@@ -185,20 +185,60 @@ def maybe_delegate_task():
 
 
 def maybe_rate_completed_tasks():
-    """Rate tasks that other agents completed for us."""
+    """Rate tasks that other agents completed for us.
+
+    WeatherWatch evaluates results intelligently:
+    - Checks if the result has substance (length, structure)
+    - Checks for error indicators
+    - Checks for data quality signals (numbers, specifics, citations)
+    - Penalizes vague or generic responses
+    """
     tasks = get_tasks_we_requested()
     rated = []
 
     for task in tasks:
         if task.get("status") == "completed" and not task.get("rating"):
-            # Rate based on whether the result looks useful
             result_text = task.get("result", "")
+
+            # Start with base score
+            score = 0.5
+
+            # Penalize errors or empty results
             if not result_text or "error" in result_text.lower():
-                score = round(random.uniform(0.3, 0.5), 2)
+                score = round(random.uniform(0.2, 0.4), 2)
+                resp = rate_agent(task["provider_id"], score, task["task_id"])
+                rated.append({"task_id": task["task_id"], "provider": task["provider_id"], "score": score, "result": resp})
+                continue
+
+            # Reward detail and substance
+            if len(result_text) > 300:
+                score += 0.15  # Detailed response
             elif len(result_text) > 100:
-                score = round(random.uniform(0.75, 0.95), 2)
-            else:
-                score = round(random.uniform(0.55, 0.75), 2)
+                score += 0.08
+
+            # Reward quantitative data (numbers = specifics, not vague)
+            import re
+            numbers = re.findall(r'\d+\.?\d*', result_text)
+            if len(numbers) >= 5:
+                score += 0.12  # Data-rich response
+            elif len(numbers) >= 2:
+                score += 0.06
+
+            # Reward structured output (JSON, bullet points, sections)
+            if any(marker in result_text for marker in ['{', 'findings', 'recommendation', 'summary', 'conclusion']):
+                score += 0.08
+
+            # Reward citations or references
+            if any(marker in result_text.lower() for marker in ['source', 'citation', 'study', 'et al', 'reference']):
+                score += 0.05
+
+            # Penalize very short or generic responses
+            if len(result_text) < 50:
+                score -= 0.15
+
+            # Clamp and add slight randomness
+            score = max(0.3, min(0.98, score + random.uniform(-0.05, 0.05)))
+            score = round(score, 2)
 
             resp = rate_agent(task["provider_id"], score, task["task_id"])
             rated.append({
