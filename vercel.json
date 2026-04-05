@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "* * * * *"
+    }
+  ],
   "builds": [
     {
       "src": "api/**/*.py",
@@ -14,6 +20,7 @@
     { "src": "/api/weather", "dest": "/api/weather.py" },
     { "src": "/api/forecast", "dest": "/api/forecast.py" },
     { "src": "/api/geocode", "dest": "/api/geocode.py" },
+    { "src": "/api/cron", "dest": "/api/cron.py" },
     { "src": "/(.*)", "dest": "/public/$1" }
   ]
 }
