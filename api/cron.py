@@ -138,10 +138,19 @@ COLLABORATORS = {
 
 
 def maybe_delegate_task():
-    """Delegate a task to another agent (always delegates since cron runs infrequently).
+    """Delegate a task to another agent (~20% chance per minute).
 
-    This creates organic cross-agent activity on the platform.
+    Only delegates if we don't already have too many pending outbound tasks.
     """
+    # Check if we already have pending outbound tasks — don't flood
+    our_tasks = get_tasks_we_requested()
+    pending_out = [t for t in our_tasks if t.get("status") == "pending"]
+    if len(pending_out) >= 3:
+        return None  # Wait for existing tasks to be processed first
+
+    # 20% chance per minute = ~12 delegations per hour
+    if random.random() > 0.20:
+        return None
 
     city = random.choice(WATCH_CITIES)
     collab_id = random.choice(list(COLLABORATORS.keys()))
