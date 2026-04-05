@@ -283,6 +283,9 @@
                 <div class="trust-label">Status</div>
                 <div class="trust-detail"><span class="pulse-dot"></span>Live</div>
             </div>
+            <button class="trust-link" onclick="runAgent()" id="runAgentBtn" style="cursor:pointer;">
+                Run Agent Now
+            </button>
             <a class="trust-link" href="https://trust-layer-topaz.vercel.app" target="_blank">
                 View on Trust Layer
             </a>
@@ -608,6 +611,43 @@
             if (d.includes('snow')) return '🌨️';
             if (d.includes('thunder')) return '⛈️';
             return '🌤️';
+        }
+
+        // Run agent manually
+        async function runAgent() {
+            const btn = document.getElementById('runAgentBtn');
+            btn.textContent = 'Running...';
+            btn.disabled = true;
+            try {
+                const resp = await fetch('/api/cron');
+                const data = await resp.json();
+                const actions = data.actions || [];
+                let msg = '';
+                for (const a of actions) {
+                    if (a.type === 'processed_tasks') msg += `Processed ${a.count} task(s). `;
+                    if (a.type === 'rated_agents') msg += `Rated ${a.count} agent(s). `;
+                    if (a.type === 'delegated_task') msg += `Delegated 1 task. `;
+                }
+                if (!msg) msg = 'No pending work. Agent is idle.';
+                btn.textContent = msg;
+                // Refresh trust score and activity
+                loadTrustStatus();
+                if (document.getElementById('tab-activity').classList.contains('active')) loadActivity();
+                setTimeout(() => { btn.textContent = 'Run Agent Now'; btn.disabled = false; }, 4000);
+            } catch (e) {
+                btn.textContent = 'Error: ' + e.message;
+                setTimeout(() => { btn.textContent = 'Run Agent Now'; btn.disabled = false; }, 3000);
+            }
+        }
+
+        // Also add a trigger button for the trust-layer cron
+        async function runTrustLayerWorker() {
+            try {
+                const resp = await fetch('https://trust-layer-topaz.vercel.app/api/cron-worker');
+                return await resp.json();
+            } catch (e) {
+                return { error: e.message };
+            }
         }
 
         // Init
