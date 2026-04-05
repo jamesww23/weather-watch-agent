@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/**/*.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/api/weather", "dest": "/api/weather.py" },
+    { "src": "/api/forecast", "dest": "/api/forecast.py" },
+    { "src": "/api/geocode", "dest": "/api/geocode.py" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ]
+}
