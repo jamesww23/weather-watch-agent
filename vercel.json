@@ -21,6 +21,7 @@
     { "src": "/api/forecast", "dest": "/api/forecast.py" },
     { "src": "/api/geocode", "dest": "/api/geocode.py" },
     { "src": "/api/cron", "dest": "/api/cron.py" },
+    { "src": "/api/status", "dest": "/api/status.py" },
     { "src": "/(.*)", "dest": "/public/$1" }
   ]
 }
