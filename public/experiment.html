@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment 2: Real vs Simulated Weather Agents</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        .container { max-width: 1060px; margin: 0 auto; padding: 20px; }
+
+        .header { text-align: center; padding: 30px 20px 10px; }
+        .header h1 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        .header p { color: #94a3b8; font-size: 0.95rem; }
+        .header .badge {
+            display: inline-block;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #38bdf8;
+            margin-top: 10px;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            border-radius: 14px;
+            padding: 24px;
+            margin: 16px 0;
+        }
+        .card h2 {
+            font-size: 1.15rem;
+            color: #38bdf8;
+            margin-bottom: 12px;
+        }
+
+        /* Run button */
+        .run-section { text-align: center; margin: 24px 0; }
+        .run-btn {
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            border: none;
+            color: white;
+            padding: 14px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .run-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(56,189,248,0.3); }
+        .run-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .rounds-select {
+            background: #1e293b;
+            border: 1px solid #475569;
+            color: #e2e8f0;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-right: 12px;
+        }
+
+        /* Progress */
+        .progress-bar {
+            display: none;
+            margin: 16px 0;
+        }
+        .progress-bar .track {
+            height: 6px;
+            background: #1e293b;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.5s;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .progress-text {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-top: 8px;
+        }
+
+        /* Results summary cards */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin: 16px 0;
+        }
+        @media (max-width: 700px) {
+            .results-grid { grid-template-columns: 1fr; }
+        }
+        .agent-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 2px solid #334155;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .agent-card.winner {
+            border-color: #22c55e;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.15);
+        }
+        .agent-card.loser {
+            border-color: #ef4444;
+            opacity: 0.85;
+        }
+        .agent-card .name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .agent-card .strategy {
+            font-size: 0.78rem;
+            color: #94a3b8;
+            margin-bottom: 14px;
+        }
+        .agent-card .metric {
+            margin: 10px 0;
+        }
+        .agent-card .metric .value {
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+        .agent-card .metric .label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .trust-color-high { color: #22c55e; }
+        .trust-color-mid { color: #eab308; }
+        .trust-color-low { color: #ef4444; }
+        .winner-badge {
+            display: inline-block;
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid #22c55e;
+            color: #22c55e;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-top: 8px;
+        }
+
+        /* Rounds table */
+        .rounds-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .rounds-table th {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 10px 8px;
+            text-align: left;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.5px;
+        }
+        .rounds-table td {
+            padding: 10px 8px;
+            border-top: 1px solid #1e293b;
+        }
+        .rounds-table tr:hover { background: rgba(56, 189, 248, 0.05); }
+        .accuracy-bar {
+            display: inline-block;
+            height: 6px;
+            border-radius: 3px;
+            min-width: 4px;
+        }
+
+        /* Conclusion */
+        .conclusion {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.05rem;
+            line-height: 1.6;
+        }
+        .conclusion .verdict {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+        .conclusion.success .verdict { color: #22c55e; }
+        .conclusion.partial .verdict { color: #eab308; }
+
+        /* Log */
+        .log {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Menlo', 'Monaco', monospace;
+            font-size: 0.78rem;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+        .log .entry { margin-bottom: 2px; }
+        .log .info { color: #38bdf8; }
+        .log .success { color: #22c55e; }
+        .log .warning { color: #eab308; }
+        .log .error { color: #ef4444; }
+
+        a { color: #38bdf8; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .back-link { display: inline-block; margin-bottom: 16px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="/" class="back-link">&larr; Back to WeatherWatch</a>
+
+    <div class="header">
+        <h1>Experiment 2: Real vs Simulated</h1>
+        <p>Does the Trust Layer reward accuracy? Three weather agents compete &mdash; only one uses real data.</p>
+        <div class="badge">MIT MAS.664 &middot; Assignment 7 &middot; Team 8</div>
+    </div>
+
+    <!-- Hypothesis -->
+    <div class="card">
+        <h2>Hypothesis</h2>
+        <p>An agent providing <strong>real weather data</strong> (from Open-Meteo API) will earn higher trust scores
+        than agents providing <strong>random</strong> or <strong>stale/hardcoded</strong> data, even when all three
+        agents claim to offer the same service.</p>
+        <br>
+        <p style="color:#94a3b8; font-size:0.9rem;">
+            <strong>WeatherWatch</strong> (real API data) vs
+            <strong>FakeWeatherBot</strong> (random numbers) vs
+            <strong>StaleWeatherBot</strong> (hardcoded 22C/clear). A <em>WeatherJudge</em> agent compares each response
+            against Open-Meteo ground truth and rates accuracy through the Trust Layer.
+        </p>
+    </div>
+
+    <!-- Run controls -->
+    <div class="run-section">
+        <select class="rounds-select" id="roundsSelect">
+            <option value="3">3 rounds</option>
+            <option value="5" selected>5 rounds (recommended)</option>
+            <option value="7">7 rounds</option>
+            <option value="10">10 rounds</option>
+        </select>
+        <button class="run-btn" id="runBtn" onclick="runExperiment()">
+            Run Experiment
+        </button>
+    </div>
+
+    <div class="progress-bar" id="progressBar">
+        <div class="track"><div class="fill" id="progressFill"></div></div>
+        <div class="progress-text" id="progressText">Initializing experiment...</div>
+    </div>
+
+    <!-- Results (hidden until experiment runs) -->
+    <div id="resultsSection" style="display:none;">
+
+        <!-- Summary Cards -->
+        <div class="card">
+            <h2>Results Summary</h2>
+            <div class="results-grid" id="resultsGrid"></div>
+        </div>
+
+        <!-- Conclusion -->
+        <div class="card" id="conclusionCard">
+            <h2>Conclusion</h2>
+            <div class="conclusion" id="conclusionText"></div>
+        </div>
+
+        <!-- Round Details -->
+        <div class="card">
+            <h2>Round-by-Round Details</h2>
+            <div style="overflow-x:auto;">
+                <table class="rounds-table" id="roundsTable">
+                    <thead>
+                        <tr>
+                            <th>Round</th>
+                            <th>City</th>
+                            <th>Ground Truth</th>
+                            <th>WeatherWatch</th>
+                            <th>FakeWeatherBot</th>
+                            <th>StaleWeatherBot</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roundsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Raw Log -->
+        <div class="card">
+            <h2>Experiment Log</h2>
+            <div class="log" id="logOutput"></div>
+        </div>
+
+        <!-- Metadata -->
+        <div class="card" id="metaCard" style="font-size:0.85rem; color:#94a3b8;"></div>
+    </div>
+</div>
+
+<script>
+const API_BASE = window.location.origin;
+
+function trustColor(score) {
+    if (score >= 0.6) return 'trust-color-high';
+    if (score >= 0.35) return 'trust-color-mid';
+    return 'trust-color-low';
+}
+
+function accColor(score) {
+    if (score >= 0.7) return '#22c55e';
+    if (score >= 0.4) return '#eab308';
+    return '#ef4444';
+}
+
+async function runExperiment() {
+    const btn = document.getElementById('runBtn');
+    const bar = document.getElementById('progressBar');
+    const fill = document.getElementById('progressFill');
+    const pText = document.getElementById('progressText');
+    const rounds = document.getElementById('roundsSelect').value;
+
+    btn.disabled = true;
+    btn.textContent = 'Running...';
+    bar.style.display = 'block';
+    fill.style.width = '10%';
+    pText.textContent = 'Registering agents and running weather queries...';
+    document.getElementById('resultsSection').style.display = 'none';
+
+    // Simulate progress since it's a single request
+    let progress = 10;
+    const interval = setInterval(() => {
+        progress = Math.min(progress + Math.random() * 8, 90);
+        fill.style.width = progress + '%';
+        const step = Math.floor(progress / 18) + 1;
+        const cities = ['Boston', 'Tokyo', 'London', 'Sydney', 'Paris', 'Boston', 'Tokyo', 'London', 'Sydney', 'Paris'];
+        if (step <= rounds) {
+            pText.textContent = `Round ${step}/${rounds}: Querying weather for ${cities[step-1]}...`;
+        }
+    }, 1500);
+
+    try {
+        const resp = await fetch(`${API_BASE}/api/experiment?rounds=${rounds}`);
+        const data = await resp.json();
+
+        clearInterval(interval);
+        fill.style.width = '100%';
+        pText.textContent = 'Experiment complete!';
+
+        if (data.error) {
+            pText.textContent = `Error: ${data.error}`;
+            btn.disabled = false;
+            btn.textContent = 'Retry Experiment';
+            return;
+        }
+
+        renderResults(data);
+        document.getElementById('resultsSection').style.display = 'block';
+
+        setTimeout(() => {
+            bar.style.display = 'none';
+        }, 2000);
+    } catch (err) {
+        clearInterval(interval);
+        pText.textContent = `Network error: ${err.message}`;
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Run Again';
+}
+
+function renderResults(data) {
+    const summary = data.summary;
+    const grid = document.getElementById('resultsGrid');
+
+    // Find winner
+    let maxTrust = -1, winnerId = '';
+    for (const [label, info] of Object.entries(summary)) {
+        if (info.trust_score > maxTrust) {
+            maxTrust = info.trust_score;
+            winnerId = label;
+        }
+    }
+
+    const strategies = {
+        real: 'Real Open-Meteo API data',
+        fake: 'Random numbers in plausible ranges',
+        stale: 'Hardcoded 22C / clear sky',
+    };
+
+    grid.innerHTML = '';
+    for (const label of ['real', 'fake', 'stale']) {
+        const info = summary[label];
+        const isWinner = label === winnerId;
+        const isLoser = !isWinner && info.trust_score < 0.35;
+
+        const card = document.createElement('div');
+        card.className = `agent-card ${isWinner ? 'winner' : ''} ${isLoser ? 'loser' : ''}`;
+        card.innerHTML = `
+            <div class="name">${info.agent_name}</div>
+            <div class="strategy">${strategies[label]}</div>
+            <div class="metric">
+                <div class="value ${trustColor(info.trust_score)}">${(info.trust_score * 100).toFixed(1)}%</div>
+                <div class="label">Trust Score</div>
+            </div>
+            <div class="metric">
+                <div class="value" style="font-size:1.3rem;">${info.avg_rating.toFixed(3)}</div>
+                <div class="label">Avg Rating</div>
+            </div>
+            <div class="metric">
+                <div class="value" style="font-size:1.1rem; color:#94a3b8;">${info.rounds_completed} rounds</div>
+                <div class="label">Completed</div>
+            </div>
+            ${isWinner ? '<div class="winner-badge">Highest Trust</div>' : ''}
+        `;
+        grid.appendChild(card);
+    }
+
+    // Conclusion
+    const cDiv = document.getElementById('conclusionText');
+    const isSuccess = data.conclusion.startsWith('SUCCESS');
+    document.getElementById('conclusionCard').querySelector('.conclusion').className =
+        `conclusion ${isSuccess ? 'success' : 'partial'}`;
+    cDiv.innerHTML = `
+        <div class="verdict">${isSuccess ? 'Hypothesis Confirmed' : 'Partial Confirmation'}</div>
+        <p>${data.conclusion}</p>
+    `;
+
+    // Rounds table
+    const tbody = document.getElementById('roundsBody');
+    tbody.innerHTML = '';
+    for (const round of data.rounds) {
+        const gt = round.ground_truth;
+        const row = document.createElement('tr');
+
+        let cells = `
+            <td><strong>R${round.round}</strong></td>
+            <td>${round.city}</td>
+            <td>${gt.temperature_c}C, ${gt.humidity_pct}%<br><small style="color:#94a3b8">${gt.condition}</small></td>
+        `;
+
+        for (const label of ['real', 'fake', 'stale']) {
+            const agent = round.agents[label];
+            if (!agent) {
+                cells += '<td style="color:#475569">-</td>';
+                continue;
+            }
+            const acc = agent.accuracy;
+            const resp = agent.response;
+            const barW = Math.max(4, acc.overall * 100);
+            cells += `
+                <td>
+                    ${resp.temperature_c}C, ${resp.humidity_pct}%<br>
+                    <small style="color:#94a3b8">${resp.condition}</small><br>
+                    <span class="accuracy-bar" style="width:${barW}px; background:${accColor(acc.overall)}"></span>
+                    <small style="color:${accColor(acc.overall)}">${(acc.overall*100).toFixed(0)}%</small>
+                    &rarr; <strong>${agent.rating.toFixed(2)}</strong>
+                </td>
+            `;
+        }
+
+        row.innerHTML = cells;
+        tbody.appendChild(row);
+    }
+
+    // Log
+    const logDiv = document.getElementById('logOutput');
+    logDiv.innerHTML = '';
+    addLog(logDiv, 'info', `Experiment started at ${data.started_at}`);
+    addLog(logDiv, 'info', `Platform: ${data.platform}`);
+    addLog(logDiv, 'info', `Cities: ${data.cities.join(', ')}`);
+
+    for (const reg of data.registration) {
+        addLog(logDiv, reg.status === 'registered' || reg.status === 'already_exists' ? 'success' : 'warning',
+            `Registered ${reg.agent} (${reg.agent_id}): ${reg.status}`);
+    }
+
+    for (const round of data.rounds) {
+        addLog(logDiv, 'info', `--- Round ${round.round}: ${round.city} ---`);
+        const gt = round.ground_truth;
+        addLog(logDiv, 'info', `Ground truth: ${gt.temperature_c}C, ${gt.humidity_pct}% humidity, ${gt.condition}`);
+
+        for (const [label, agent] of Object.entries(round.agents)) {
+            const acc = agent.accuracy;
+            const cls = acc.overall >= 0.7 ? 'success' : acc.overall >= 0.4 ? 'warning' : 'error';
+            addLog(logDiv, cls,
+                `  ${agent.agent_name}: accuracy=${(acc.overall*100).toFixed(1)}% rating=${agent.rating} ` +
+                (agent.note ? `[${agent.note}]` : `task=${agent.task_id}`));
+        }
+    }
+
+    addLog(logDiv, 'info', `Completed in ${data.elapsed_seconds}s`);
+    addLog(logDiv, data.conclusion.startsWith('SUCCESS') ? 'success' : 'warning', data.conclusion);
+
+    // Metadata
+    document.getElementById('metaCard').innerHTML = `
+        <strong>Experiment Metadata</strong><br>
+        Started: ${data.started_at}<br>
+        Completed: ${data.completed_at}<br>
+        Duration: ${data.elapsed_seconds}s<br>
+        Rounds: ${data.rounds.length}<br>
+        Platform: <a href="${data.platform}" target="_blank">${data.platform}</a><br>
+        Agent Dashboard: <a href="${API_BASE}" target="_blank">${API_BASE}</a>
+    `;
+}
+
+function addLog(container, cls, text) {
+    const div = document.createElement('div');
+    div.className = `entry ${cls}`;
+    div.textContent = text;
+    container.appendChild(div);
+}
+</script>
+
+</body>
+</html>
